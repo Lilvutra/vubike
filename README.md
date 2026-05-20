@@ -596,7 +596,7 @@ With those operational states it will be able to immediately reason about:
 
 without replaying full logs.
 
-This reduces unnecessary friction during the buying journey and helps preserve continuity across episodic marketplace interactions. However, This creates a critical design tradeoff:
+This reduces unnecessary friction during the buying journey and helps preserve continuity across episodic marketplace interactions. However, this creates a critical design tradeoff:
 
 | Too Much Memory Reuse | Too Little Memory Reuse |
 |---|---|
@@ -605,6 +605,7 @@ This reduces unnecessary friction during the buying journey and helps preserve c
 | wrong tool calls | lost continuity |
 | unsafe automation | reduced conversion |
 
+Therefore, the system should not blindly reuse memory but instead these operational state fields help estimate whether automatic continuation is reliable enough.
 
 
 ---
@@ -649,12 +650,15 @@ again and again with identical filters, which lead to bad UX and wasted cost. Th
 ```json
 {
   "marketplace_state": {
-    "last_search_query_hash": "abc123",
+    "active_search_context": {
 
-    "recommended_listing_ids": [
-      "listing_1",
-      "listing_2"
+        "query_signature": "",
+
+        "recommended_listing_ids": [
+            "listing_1",
+            "listing_2"
     ]
+    }
   }
 }
 
