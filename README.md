@@ -215,7 +215,7 @@ Logging + Evaluation
     ↓
 Agent Response
 ```
-
+![High level architecture](agent_vubike.drawio.png)
 ---
 
 # Core Design Philosophy
