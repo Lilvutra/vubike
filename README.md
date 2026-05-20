@@ -199,6 +199,10 @@ Detected signals:
 ```text
 User Message
     ↓
+Normalize
+    ↓
+Event Type Logging
+    ↓
 Extraction Layer
     ↓
 Operational State Update
@@ -211,9 +215,15 @@ Tool Execution
     ↓
 State Transition
     ↓
-Logging + Evaluation
+Logging + Runtime Evaluation
     ↓
 Agent Response
+    ↓
+Outcome Tracking
+    ↓
+Offline Evaluation
+    ↓
+Feedback Loop
 ```
 ![High level architecture](agent_vubike.drawio.png)
 ---
