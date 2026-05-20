@@ -291,6 +291,13 @@ Low-value long-term data:
 - verbose negotiation back-and-forth
 - temporary conversational noise
 
+User message metadata
+Tool invocation
+Tool success/failure
+State changes(historical records)
+
+
+
 Logs remain useful for:
 
 - replayability
@@ -576,6 +583,8 @@ This keeps the system compact while preserving workflow continuity.
 
   "outcome_status": {
     "appointment_booked": false,
+    "time":"",
+    "place":"",
     "bridge_created": true,
     "escalated": false
   },
@@ -685,7 +694,7 @@ Now policy reasoning can decide that same query already executed recently withou
 | Capability | Explanation |
 |---|---|
 | Multi-listing support | Buyers can explore multiple bikes/sellers simultaneously |
-| Compact state | Only operationally important memory is stored |
+| Compact state + operational markers| Only operationally important memory is stored while avoiding expensive raw logs replay|
 | Tool compatibility | Lightweight mapping into APIs |
 | Future orchestration | Supports future workflows without redesign |
 | Evaluation support | Structured state enables offline metrics |
@@ -819,6 +828,7 @@ Call when:
 | Operational State Field | Tool Parameter |
 |---|---|
 | preferred_brands | brand |
+| model | model |
 | preferred_year_min | year_range.min |
 | budget_min/max | price_range |
 | location | location |
@@ -835,6 +845,7 @@ Call when:
   "buyer_profile": {
     "preferences": {
       "preferred_brands": ["Honda", "Yamaha"],
+      "model": "Mixtral",
       "budget_max": 26000000,
       "preferred_year_min": 2020,
       "location": "HCM"
@@ -1152,14 +1163,20 @@ Call when:
 
 ```json
 {
-  "marketplace_state": {
-    "active_channel_id": "channel_789"
-  },
-
   "lead_stage": {
+    "status": "NEGOTIATION",
     "buyer_interest_level": "HIGH",
     "seller_engagement_level": "HIGH"
+  },
+  "marketplace_state": {
+    "active_channel_id": "channel_789",
+    "selected_listing_id": "listing_1"
+  },
+
+  "trust_and_safety": {
+    "global_risk_flags": []
   }
+
 }
 ```
 
