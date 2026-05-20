@@ -510,16 +510,29 @@ This keeps the system compact while preserving workflow continuity.
           "seller reluctant to negotiate"
         ],
 
-        "active_channel_id": "channel_123"
+        "active_search_context": {
+            "query_signature": "Honda|26000000|HCM",
+            "retrieved_listing_ids": [],
+            "last_search_at": ""
+        },
+
+        "active_listing_detail_context": {
+            "listing_id": "",
+            "last_detail_fetch_at": ""
+        }
       }
     ],
+
+    "active_channel_id": "channel_123",
 
     "selected_listing_id": "listing_ab_2021",
 
     "recommended_listing_ids": [
       "listing_vision_2022",
       "listing_lead_2021"
-    ]
+    ],
+
+
   },
 
   "trust_and_safety": {
@@ -560,6 +573,39 @@ This keeps the system compact while preserving workflow continuity.
   "updated_at": "2026-02-05T09:05:00Z"
 }
 ```
+---
+
+# Why We Do Not Rely Entirely on User Clarification
+
+Without operational state like active_search_context and active_listing_detail_context, the agent would repeatedly ask users to reconstruct prior context:
+
+
+```text
+“Bạn nói xe nào vậy?”
+“Chiếc Honda nào?”
+“Bạn đang nói listing hôm trước à?”
+```
+
+
+With those operational states it will be able to immediately reason about:
+
+- what listings were already shown,
+- whether search results are stale(because marketplace data changes dynamically due to listings being sold, seller inactive, price changes, paperwork status updates)
+- whether another tool call is necessary,
+- whether the user is referring to a previous bike.
+
+without replaying full logs.
+
+This reduces unnecessary friction during the buying journey and helps preserve continuity across episodic marketplace interactions. However, This creates a critical design tradeoff:
+
+| Too Much Memory Reuse | Too Little Memory Reuse |
+|---|---|
+| incorrect assumptions | repetitive questioning |
+| stale workflow continuation | poor UX friction |
+| wrong tool calls | lost continuity |
+| unsafe automation | reduced conversion |
+
+
 
 ---
 
@@ -575,8 +621,8 @@ Storing them directly inside operational state would make memory:
 
 Instead:
 
-- operational state stays compact
-- tool calls are persisted in logs
+- operational marker state stays compact
+- tool calls details are persisted in logs
 
 This separation improves:
 
@@ -586,6 +632,37 @@ This separation improves:
 - debugging
 
 without polluting workflow memory.
+
+Suppose buyer says:
+
+```text
+Cho mình xem thêm xe khác
+```
+
+If no operational memory exists, the agent might call:
+
+```text
+search_listings()
+```
+again and again with identical filters, which lead to bad UX and wasted cost. Therefore, state stores lightweight retrieval status:
+
+```json
+{
+  "marketplace_state": {
+    "last_search_query_hash": "abc123",
+
+    "recommended_listing_ids": [
+      "listing_1",
+      "listing_2"
+    ]
+  }
+}
+
+```
+
+Now policy reasoning can decide that same query already executed recently without storing entire tool history
+
+
 
 ---
 
@@ -1022,7 +1099,7 @@ NEGOTIATION
 
 ## Escalation Guardrail
 
-Do NOT create bridge if:
+Will NOT create bridge if:
 
 ```json
 {
@@ -1066,7 +1143,8 @@ Call when:
   },
 
   "lead_stage": {
-    "buyer_interest_level": "HIGH"
+    "buyer_interest_level": "HIGH",
+    "seller_engagement_level": "HIGH"
   }
 }
 ```
@@ -1221,22 +1299,43 @@ the system becomes:
 
 ```json
 {
+  "conversation_id":"c1",
+  "timestamp":"2026-02-05T09:00:10Z",
   "sender":"buyer",
-  "text":"Honda hoặc Yamaha, đời 2020 trở lên"
+  "text":"Honda hoặc Yamaha, đời 2020 trở lên, oách chút" 
 }
 ```
 
 ---
 
 ### Normalized Output
+Normalize into internal standard format:
 
 ```json
 {
+  "conversation_id":"c1",
   "role":"buyer",
-  "intent":"DEFINE_CONSTRAINT",
-  "entities":{
-    "brand":["Honda","Yamaha"],
-    "min_year":2020
+  "text":"Honda hoặc Yamaha, đời 2020 trở lên, oách chút",
+  "timestamp":"2026-02-05T09:00:10Z",
+  "language":"vi"
+}
+```
+
+---
+
+# Event Logging
+
+Log system-generated workflow events to detect system lifecycle transitions, include:
+
+```json
+{
+  "event_type": "USER_MESSAGE",
+
+  "conversation_id": "c1",
+
+  "payload": {
+    "role": "buyer",
+    "text": "Mình muốn xe Honda dưới 26tr ở HCM"
   }
 }
 ```
