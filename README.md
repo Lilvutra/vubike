@@ -637,64 +637,579 @@ Message
 ```
 
 ---
-
 # Internal Tools
 
-## search_listings(query)
+The agent does not invoke tools directly from raw chat messages.
 
-### Purpose
+Instead, the orchestration system follows:
 
-Retrieve candidate listings matching buyer constraints.
+```text
+Message
+→ Extraction
+→ Operational State Update
+→ Policy Reasoning
+→ Tool Decision
+→ Tool Adapter
+→ Tool Execution
+→ State Transition
+→ Logging
+```
 
-### Input
+The tool adapter converts semantically meaningful operational state into lightweight API-aligned fields required by internal marketplace tools.
+
+This allows the internal state to remain business-oriented while tools remain execution-oriented.
+
+---
+
+# Tool Mapping Philosophy
+
+We intentionally avoid tightly coupling:
+
+```text
+internal workflow memory
+```
+
+with:
+
+```text
+tool API schemas
+```
+
+Instead:
+
+| Layer | Responsibility |
+|---|---|
+| Operational State | business/workflow memory |
+| Policy Layer | decision logic |
+| Tool Adapter | state → API translation |
+| Tools | execution |
+
+This separation improves:
+
+- maintainability
+- flexibility
+- observability
+- future extensibility
+
+---
+
+# 1. search_listings(query)
+
+## Purpose
+
+Retrieve candidate listings matching buyer preferences and constraints.
+
+---
+
+## Trigger Conditions
+
+Call when:
+
+- buyer intent = vehicle discovery
+- enough search constraints exist
+- confidence sufficiently high
+
+---
+
+## Example State Conditions
 
 ```json
 {
-  "brand": ["Honda"],
-  "price_range": {
-    "max": 26000000
-  },
-  "location": "HCM"
+  "lead_stage.status": "DISCOVERY",
+  "buyer_profile.preferences.location": "HCM",
+  "buyer_profile.preferences.budget_max": 26000000
 }
 ```
 
 ---
 
-## get_listing_detail(listing_id)
+## State → Tool Mapping
 
-### Purpose
-
-Retrieve detailed listing information.
-
-### Used For
-
-- risk evaluation
-- negotiation support
-- paperwork verification
+| Operational State Field | Tool Parameter |
+|---|---|
+| preferred_brands | brand |
+| preferred_year_min | year_range.min |
+| budget_min/max | price_range |
+| location | location |
+| latent_needs | keywords |
 
 ---
 
-## create_chat_bridge(buyer_id, seller_id, listing_id)
+## Example Mapping
 
-### Purpose
+### Operational State
+
+```json
+{
+  "buyer_profile": {
+    "preferences": {
+      "preferred_brands": ["Honda", "Yamaha"],
+      "budget_max": 26000000,
+      "preferred_year_min": 2020,
+      "location": "HCM"
+    },
+
+    "latent_needs": [
+      "fuel efficient",
+      "good resale value"
+    ]
+  }
+}
+```
+
+---
+
+### Tool Payload
+
+```json
+{
+  "brand": ["Honda", "Yamaha"],
+  "year_range": {
+    "min": 2020
+  },
+  "price_range": {
+    "max": 26000000
+  },
+  "location": "HCM",
+  "keywords": [
+    "fuel efficient",
+    "good resale value"
+  ]
+}
+```
+
+---
+
+## Expected Output
+
+```json
+{
+  "listings": [
+    {
+      "listing_id": "listing_vision_2021",
+      "seller_id": "seller_123",
+      "price": 25500000
+    }
+  ]
+}
+```
+
+---
+
+## State Transition
+
+```text
+DISCOVERY
+→ MATCHING
+```
+
+---
+
+# 2. get_listing_detail(listing_id)
+
+## Purpose
+
+Retrieve detailed listing information for:
+
+- evaluation
+- negotiation support
+- risk analysis
+
+---
+
+## Trigger Conditions
+
+Call when:
+
+- buyer expresses interest
+- listing shortlisted
+- critical information missing
+
+---
+
+## Example State Conditions
+
+```json
+{
+  "marketplace_state": {
+    "selected_listing_id": "listing_vision_2021"
+  },
+
+  "agent_reasoning": {
+    "missing_information": [
+      "paperwork_status"
+    ]
+  }
+}
+```
+
+---
+
+## State → Tool Mapping
+
+| Operational State Field | Tool Parameter |
+|---|---|
+| selected_listing_id | listing_id |
+
+---
+
+## Example Mapping
+
+### Operational State
+
+```json
+{
+  "marketplace_state": {
+    "selected_listing_id": "listing_vision_2021"
+  }
+}
+```
+
+---
+
+### Tool Payload
+
+```json
+{
+  "listing_id": "listing_vision_2021"
+}
+```
+
+---
+
+## Expected Output
+
+```json
+{
+  "listing_id": "listing_vision_2021",
+  "brand": "Honda",
+  "model": "Vision",
+  "year": 2021,
+  "odo_km": 18000,
+  "paperwork_status": "PENDING_TRANSFER"
+}
+```
+
+---
+
+## Possible Risk Detections
+
+| Signal | Risk |
+|---|---|
+| missing paperwork | DOCUMENT_RISK |
+| high odo | HIGH_USAGE |
+| suspicious price | FRAUD_RISK |
+
+---
+
+## State Transition
+
+```text
+MATCHING
+→ NEGOTIATION
+```
+
+or:
+
+```text
+MATCHING
+→ ESCALATION
+```
+
+---
+
+# 3. create_chat_bridge(buyer_id, seller_id, listing_id)
+
+## Purpose
 
 Create trusted buyer ↔ seller communication channel.
 
 ---
 
-## book_appointment(channel_id, time, place)
+## Trigger Conditions
 
-### Purpose
+Call when:
+
+- buyer interest high
+- seller responsive
+- risks acceptable
+- no escalation blocking communication
+
+---
+
+## Example State Conditions
+
+```json
+{
+  "lead_stage": {
+    "buyer_interest_level": "HIGH",
+    "seller_engagement_level": "HIGH"
+  },
+
+  "trust_and_safety": {
+    "global_risk_flags": []
+  }
+}
+```
+
+---
+
+## State → Tool Mapping
+
+| Operational State Field | Tool Parameter |
+|---|---|
+| buyer_id | buyer_id |
+| candidate_listings[].seller_id | seller_id |
+| selected_listing_id | listing_id |
+
+---
+
+## Example Mapping
+
+### Operational State
+
+```json
+{
+  "participants": {
+    "buyer_id": "buyer_123"
+  },
+
+  "marketplace_state": {
+    "selected_listing_id": "listing_vision_2021",
+
+    "candidate_listings": [
+      {
+        "listing_id": "listing_vision_2021",
+        "seller_id": "seller_456"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### Tool Payload
+
+```json
+{
+  "buyer_id": "buyer_123",
+  "seller_id": "seller_456",
+  "listing_id": "listing_vision_2021"
+}
+```
+
+---
+
+## Expected Output
+
+```json
+{
+  "channel_id": "channel_789"
+}
+```
+
+---
+
+## State Transition
+
+```text
+NEGOTIATION
+→ COORDINATION
+```
+
+---
+
+## Escalation Guardrail
+
+Do NOT create bridge if:
+
+```json
+{
+  "trust_and_safety": {
+    "global_risk_flags": [
+      "FRAUD_RISK"
+    ]
+  }
+}
+```
+
+unless human review occurs.
+
+---
+
+# 4. book_appointment(channel_id, time, place)
+
+## Purpose
 
 Coordinate physical inspection/test ride.
 
 ---
 
-## log_event(conversation_id, event)
+## Trigger Conditions
 
-### Purpose
+Call when:
 
-Persist workflow traces and execution history.
+- active communication channel exists
+- buyer intent strong
+- time/place agreed
+- no unresolved high-severity risk
+
+---
+
+## Example State Conditions
+
+```json
+{
+  "marketplace_state": {
+    "active_channel_id": "channel_789"
+  },
+
+  "lead_stage": {
+    "buyer_interest_level": "HIGH"
+  }
+}
+```
+
+---
+
+## State → Tool Mapping
+
+| Operational State Field | Tool Parameter |
+|---|---|
+| active_channel_id | channel_id |
+| proposed_time | time |
+| proposed_place | place |
+
+---
+
+## Example Mapping
+
+### Operational State
+
+```json
+{
+  "marketplace_state": {
+    "active_channel_id": "channel_789"
+  },
+
+  "agent_reasoning": {
+    "next_best_action": {
+      "action": "BOOK_APPOINTMENT"
+    }
+  }
+}
+```
+
+---
+
+### Tool Payload
+
+```json
+{
+  "channel_id": "channel_789",
+  "time": "2026-02-10T18:00:00Z",
+  "place": "District 1 Cafe"
+}
+```
+
+---
+
+## Expected Output
+
+```json
+{
+  "booking_status": "CONFIRMED"
+}
+```
+
+---
+
+## State Transition
+
+```text
+COORDINATION
+→ APPOINTMENT
+```
+
+---
+
+# 5. log_event(conversation_id, event)
+
+## Purpose
+
+Persist execution traces for:
+
+- replayability
+- debugging
+- evaluation
+- analytics
+- feedback loops
+
+---
+
+## Logged Event Types
+
+| Event Type | Description |
+|---|---|
+| USER_MESSAGE | raw incoming message |
+| AGENT_ACTION | reasoning/action selection |
+| TOOL_CALL | tool invocation |
+| TOOL_RESULT | tool response |
+| STATE_UPDATE | operational state changed |
+| ESCALATION | human escalation triggered |
+| HANDOFF | transferred to human operator |
+| FEEDBACK | evaluation/outcome signal |
+
+---
+
+## Example Event
+
+```json
+{
+  "conversation_id": "c1",
+
+  "event_type": "TOOL_CALL",
+
+  "payload": {
+    "tool": "search_listings"
+  },
+
+  "timestamp": "2026-02-05T09:01:00Z"
+}
+```
+
+---
+
+# Why This Architecture Matters
+
+The tools are not merely APIs.
+
+They are workflow transition mechanisms that affect:
+
+- conversation progression
+- negotiation dynamics
+- trust/risk handling
+- next-best-action selection
+- business outcomes
+
+By separating:
+
+```text
+state
+policy
+tool adapter
+execution
+logs
+```
+
+the system becomes:
+
+- easier to evolve
+- easier to debug
+- easier to evaluate
+- easier to scale
+
 
 ---
 
