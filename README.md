@@ -1403,7 +1403,7 @@ Log system-generated workflow events to detect system lifecycle transitions. Log
 }
 ```
 
-### Log STATE_UPDATE
+### Log STATE_UPDATE event
 
 ```json
 
@@ -1422,7 +1422,7 @@ Log system-generated workflow events to detect system lifecycle transitions. Log
 }
 ```
 
-### Log AGENT_ACTION
+### Log AGENT_ACTION event
 
 ```json
 {
@@ -1464,7 +1464,7 @@ Then log:
 }
 ```
 
-### Log TOOL_RESULT
+### Log TOOL_RESULT event
 
 ```json
 {
@@ -1492,7 +1492,7 @@ Then log:
 }
 ```
 
-### Log HANDOFF
+### Log HANDOFF event
 
 ```json
 {
@@ -1641,9 +1641,17 @@ because:
 
 # Evaluation & Feedback Loop
 
-## Primary Success Metric                                                                                                                                                                           
+## Success Definition                                                                                                                                                                         
+The AI agent is designed as a transaction orchestration system rather than merely a conversational chatbot.
+Success is defined as helping buyers and sellers reach safe, high-quality transactions
+with lower friction and higher confidence through:
 
-Increase successful marketplace transactions.
+- discover suitable bikes
+- make better decisions
+- reduce uncertainty
+- coordinate efficiently
+- negotiate safely
+- progress toward completed transactions
 
 ---
 
@@ -1687,6 +1695,119 @@ will improve:
 - seller response retention
 - time to qualified match
 - drop-off after contact
+
+---
+# Error Analysis
+
+## Case 0 - c1
+### Failure
+Wrong state transition. At first it looks like a discovery stage where buyer talks to AI assistant then suddenly the system behaves like buyer-seller bride already exists and seller messages appear like a direct chat
+
+### Missing signal
+Transition conditions from discovery stage to negotiation 
+
+### Fix
+
+To preserve orchestration consistency, transitions between communication modes should be explicit.
+
+The system should explicitly model:
+
+- communication mode,
+- bridge creation,
+- workflow stage transition,
+- channel participation metadata.
+
+Example communication modes:
+
+| Mode | Meaning |
+|---|---|
+| ASSISTANT_ONLY | buyer interacts only with AI |
+| MARKETPLACE_DISCOVERY | listing exploration/search phase |
+| BRIDGED_NEGOTIATION | buyer ↔ seller connected |
+| APPOINTMENT_COORDINATION | scheduling/logistics phase |
+| ESCALATED_REVIEW | human moderation/review involved |
+
+Before seller participation appears inside the shared conversation stream, the workflow should transition explicitly:
+
+```text
+DISCOVERY
+→ create_chat_bridge()
+→ NEGOTIATION
+```
+
+Example operational events:
+
+```json
+{
+  "event_type": "TOOL_CALL",
+  "tool": "create_chat_bridge"
+}
+```
+
+```json
+{
+  "event_type": "STATE_UPDATE",
+  "lead_stage": "NEGOTIATION"
+}
+```
+
+```json
+{
+  "event_type": "BRIDGE_CREATED",
+  "channel_id": "channel_3"
+}
+```
+
+This prevents ambiguity during:
+
+- replayability,
+- state reconstruction,
+- orchestration evaluation,
+- analytics,
+- trust/safety enforcement.
+
+The AI agent participates in a multi-party workflow rather than owning all message flow directly, so communication topology changes must be represented operationally rather than inferred implicitly from raw chat logs.
+
+## Case 1 - c1
+
+### Failure 
+Wrong intent undestanding -> Agent keeps negotiating despite impossible budget gap 
+
+### Missing signal
+Price flexibility estimation 
+
+### Fix
+Add negotiation_flexibility score to recommend alternative listings earlier if price flexibility estimation is low
+
+## Case 2 - c2
+
+### Failure 
+Missing escalation -> Agent treats did not detect paperwork issue and could prematurely recommend proceeding 
+
+### Missing signal 
+Document severity classification
+
+### Fix
+Add a document severity classification layer to distinguish between:
+
+- minor paperwork delays,
+- moderate transfer friction,
+- high-risk ownership/legal uncertainty.
+
+## Case 3 - c3
+
+### Failure
+Seller immediately requests direct off-platform contact
+
+### Risk
+Loss of marketplace trust and safety visibility
+
+### Fix
+Detect bypass intent and reinforce safe transaction workflow, encourage continued in-platform coordination,
+and warn users about reduced protection outside platform visibility
+
+## Case 4 - ODO 
+
 
 ---
 
