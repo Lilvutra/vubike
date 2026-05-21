@@ -1675,7 +1675,7 @@ will improve:
 
 ## Task Metrics
 
-- match success rate
+- match success rate: 
 - appointment booking rate
 - escalation accuracy
 - next-action correctness
@@ -1794,10 +1794,26 @@ Add a document severity classification layer to distinguish between:
 - moderate transfer friction,
 - high-risk ownership/legal uncertainty.
 
-## Case 3 - c3
+## Case 3 - c2 
+
+### Failure 
+Missing memory - important risk information is not persisted through chat even though the information appeared in conversation. In c2, the agent texted that it would check the paperwork process and consult buyer more carefully which is a generic response without mentioning previous message/risk regarding paperwork 
+
+A stronger response would operationally reference earlier signals:
+
+```text
+Nếu bạn ưu tiên sang tên nhanh thì mình có thể hỗ trợ tìm thêm các xe giấy tờ hoàn chỉnh hơn.
+```
+
+### Fix
+convert important conversational signals into persistent operational state
+so that policy layer/future reasoning to reference that state. Since we also don't want the system to overreact to every paperwork issue, we use severity classification to determine how stongly the system reacts and how the system could give alternative responsse
+
+
+## Case 4 - c3
 
 ### Failure
-Seller immediately requests direct off-platform contact
+Missing escalation - Seller immediately requests direct off-platform contact
 
 ### Risk
 Loss of marketplace trust and safety visibility
@@ -1806,7 +1822,281 @@ Loss of marketplace trust and safety visibility
 Detect bypass intent and reinforce safe transaction workflow, encourage continued in-platform coordination,
 and warn users about reduced protection outside platform visibility
 
-## Case 4 - ODO 
+---
+
+# Feedback Loop
+
+The system should not only generate responses, but continuously improve orchestration quality through operational feedback.
+
+Instead of treating logs as passive history, the architecture treats them as replayable workflow traces that can be analyzed to improve:
+
+- memory design,
+- extraction quality,
+- tool routing,
+- escalation policies,
+- next-best-action selection,
+- marketplace conversion.
+
+---
+
+## 1. Collect Outcome Signals
+
+After important workflow transitions, the system stores lightweight outcome signals.
+
+Examples:
+
+| Outcome Signal | Meaning |
+|---|---|
+| APPOINTMENT_BOOKED | buyer and seller scheduled viewing |
+| SUCCESSFUL_MATCH | qualified connection created |
+| DEAL_CLOSED | transaction completed |
+| USER_DROPPED | buyer stopped engaging |
+| ESCALATED | human review required |
+| BRIDGE_CREATED | communication channel established |
+
+Example:
+
+```json
+{
+  "conversation_id": "c1",
+  "outcome": "USER_DROPPED"
+}
+```
+
+These outcomes become supervision signals for orchestration evaluation.
+
+---
+
+## 2. Log Operational Events
+
+The system logs all important workflow events:
+
+- USER_MESSAGE
+- AGENT_ACTION
+- TOOL_CALL
+- TOOL_RESULT
+- STATE_UPDATE
+- ESCALATION
+- HANDOFF
+- FEEDBACK
+
+Example:
+
+```json
+{
+  "event_type": "STATE_UPDATE",
+  "changes": {
+    "seller_flexibility": "LOW"
+  }
+}
+```
+
+The event log acts as:
+
+- replayable workflow history,
+- debugging infrastructure,
+- observability layer,
+- extraction audit trail.
+
+Raw logs remain the source of truth.
+
+---
+
+## 3. Maintain Compact Operational Context
+
+The runtime system maintains compact structured context that preserves operationally meaningful signals rather than full chat history.
+
+Example:
+
+```json
+{
+  "budget_max": 26000000,
+  "preferred_brands": ["Honda", "Yamaha"],
+  "seller_flexibility": "LOW",
+  "risk_flags": ["TRANSFER_DELAY_RISK"],
+  "lead_stage": "NEGOTIATION"
+}
+```
+
+The goal of context is not to preserve all conversation details, but to preserve information that meaningfully influences future workflow decisions.
+
+A field is typically included if:
+
+- future actions depend on it,
+- recomputing it repeatedly is expensive or unreliable,
+- it changes orchestration behavior,
+- it affects trust, negotiation, escalation, or coordination.
+
+---
+
+## 4. Generate Orchestration Tuples
+
+Operational traces are converted into compact learning tuples:
+
+```text
+(context, state, action, outcome)
+```
+
+Example:
+
+```json
+{
+  "context": {
+    "budget_gap": "HIGH",
+    "seller_flexibility": "LOW"
+  },
+
+  "state": "NEGOTIATION",
+
+  "action": "SEARCH_ALTERNATIVE_LISTINGS",
+
+  "outcome": "SUCCESSFUL_MATCH"
+}
+```
+
+These tuples are not raw logs.
+
+They are distilled orchestration learning signals derived from:
+
+- structured state,
+- workflow transitions,
+- operational outcomes.
+
+---
+
+## 5. Use Outcomes To Improve The System
+
+### A. Improve Few-Shot Examples
+
+Successful workflows become future orchestration examples.
+
+Example:
+
+```text
+high price gap
+→ recommend alternatives early
+→ successful match
+```
+
+This improves future next-best-action reasoning.
+
+---
+
+### B. Improve Tool Routing
+
+The system can learn:
+
+- when searches improve conversion,
+- when negotiation usually fails,
+- when clarification questions help,
+- when escalation is necessary.
+
+Example:
+
+| Pattern | Improvement |
+|---|---|
+| early search with weak constraints fails | ask clarification first |
+| low seller flexibility harms negotiation | recommend alternatives earlier |
+| repeated paperwork concerns cause drop-offs | escalate sooner |
+
+This improves orchestration policies over time.
+
+---
+
+### C. Improve Extraction & State Updates
+
+Repeated failures reveal weak normalization logic.
+
+Example:
+
+Many users say:
+
+```text
+“odo thấp”
+```
+
+but structured state never updates:
+
+```json
+{
+  "max_odo_km": 20000
+}
+```
+
+This indicates weak semantic extraction.
+
+Possible improvements:
+
+- stronger regex extraction,
+- improved prompts,
+- new normalization rules,
+- ontology/schema updates.
+
+---
+
+## 6. Iteratively Refine Context Fields
+
+Operational context fields are initially hypotheses based on workflow reasoning.
+
+Example:
+
+```json
+{
+  "seller_flexibility": "LOW"
+}
+```
+
+is stored because it likely affects:
+
+- negotiation success,
+- drop-off probability,
+- recommendation strategy.
+
+Over time, logged outcomes validate whether fields are truly useful.
+
+Example:
+
+| seller_flexibility | negotiation outcome |
+|---|---|
+| LOW | negotiations often fail |
+| HIGH | negotiations often succeed |
+
+This confirms that `seller_flexibility` is an important operational signal worth preserving.
+
+Fields that do not meaningfully improve orchestration can later be removed to keep context compact and high-signal.
+
+The context schema therefore evolves through:
+
+```text
+hypothesis
+→ logging
+→ evaluation
+→ refinement
+```
+
+---
+
+## Key Insight
+
+The architecture separates:
+
+| Layer | Purpose |
+|---|---|
+| Event logs | replayable source of truth |
+| Structured context/state | runtime operational memory |
+| Orchestration tuples | learning and evaluation signals |
+
+This separation enables:
+
+- observability,
+- replayability,
+- safer orchestration,
+- iterative improvement,
+- measurable workflow optimization.
+
+The AI agent is therefore not merely a conversational model, but a continuously improvable transaction orchestration system.
+
+
 
 
 ---
@@ -1858,6 +2148,5 @@ Potential future directions:
 | Structured storage | PostgreSQL |
 | Session memory | Redis |
 | Streaming events | Kafka |
-| Embeddings | Vector DB |
 | Raw logs | S3 |
 | Frontend | React |
