@@ -471,7 +471,7 @@ The operational state emphasizes:
 - agent reasoning
 
 We only store fields that are:
-
+ 
 - operationally useful
 - expensive/unreliable to recompute
 - important for future decisions
@@ -1235,7 +1235,7 @@ Call when:
 {
   "channel_id": "channel_789",
   "time": "2026-02-10T18:00:00Z",
-  "place": "District 1 Cafe"
+  "place": "Nha Rong Wharf"
 }
 ```
 
@@ -1371,9 +1371,27 @@ Normalize into internal standard format:
 
 ---
 
-# Event Logging
+# Raw Logs and Events Logging
 
-Log system-generated workflow events to detect system lifecycle transitions, include:
+## Raw Logs 
+
+Raw logs store the exact the conversational text that act as the immutable source of truth
+
+
+```json
+{
+  "conversation_id": "c1",
+  "sender": "buyer",
+  "text": "Mình muốn Honda dưới 26 triệu ở HCM"
+}
+```
+
+
+## Event Logs
+
+Log system-generated workflow events to detect system lifecycle transitions. Logs like TOOL_CALL, STATE_UPDATE, AGENT_ACTION capture process while FEEDBACK captures outcome quality that becomes training signal:
+
+### Log message event
 
 ```json
 {
@@ -1381,9 +1399,119 @@ Log system-generated workflow events to detect system lifecycle transitions, inc
 
   "conversation_id": "c1",
 
+  "message_id":"msg_123"
+}
+```
+
+### Log STATE_UPDATE
+
+```json
+
+{
+  "event_type": "STATE_UPDATE",
+
+  "conversation_id": "c1",
+
   "payload": {
-    "role": "buyer",
-    "text": "Mình muốn xe Honda dưới 26tr ở HCM"
+    "updated_fields": [
+      "preferred_brands",
+      "budget_max",
+      "location"
+    ]
+  }
+}
+```
+
+### Log AGENT_ACTION
+
+```json
+{
+  "event_type": "AGENT_ACTION",
+
+  "conversation_id": "c1",
+
+  "payload": {
+    "action": "CALL_SEARCH_LISTINGS",
+
+    "reason":
+      "Buyer constraints sufficient for retrieval"
+  }
+}
+```
+
+### Log TOOL_CALL event
+
+Tool adapter maps state -> API payload
+
+```json
+{
+  "brand": ["Honda"],
+  "price_range": {
+    "max": 26000000
+  },
+  "location": "HCM"
+}
+```
+Then log:
+
+```json
+{
+  "event_type": "TOOL_CALL",
+
+  "tool": "search_listings",
+
+  "conversation_id": "c1"
+}
+```
+
+### Log TOOL_RESULT
+
+```json
+{
+  "event_type": "TOOL_RESULT",
+
+  "tool": "search_listings",
+
+  "conversation_id": "c1",
+
+  "payload": {
+    "result_count": 2
+  }
+}
+```
+
+### Log ESCALATION event
+
+```json
+{
+  "event_type": "ESCALATION",
+
+  "conversation_id": "c1",
+
+  "reason": "DEPOSIT_SCAM_RISK"
+}
+```
+
+### Log HANDOFF
+
+```json
+{
+  "event_type": "HANDOFF",
+
+  "conversation_id": "c2",
+
+  "target": "human_support"
+}
+```
+
+### Log FEEDBACK
+
+```json
+{
+  "event_type": "FEEDBACK",
+
+  "payload": {
+    "conversation_outcome": "DROPPED"
   }
 }
 ```
