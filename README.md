@@ -209,7 +209,7 @@ Operational State Update
     ↓
 Policy Reasoning Engine
     ↓
-Tool Orchestration
+Tool Orchestration(Tool Adapter/Tool Schema)
     ↓
 Tool Execution
     ↓
@@ -224,6 +224,7 @@ Outcome Tracking
 Offline Evaluation
     ↓
 Feedback Loop
+(All stages emit Event Logs)
 ```
 ![High level architecture](agent_vubike.drawio.png)
 ---
@@ -234,9 +235,9 @@ The system separates memory into multiple layers.
 
 | Layer | Purpose |
 |---|---|
-| Raw Logs | Source of truth stored for replayability, debugging, auditing, retraining |
-| Structured Memory | Reusable operational facts for retrieval and reasoning |
-| Rolling Summary | Compressed workflow memory for efficient LLM context |
+| Raw Logs | Source of truth stored for replayability, debugging, auditing, retraining including event logging, state update events, tool call events, tool result events, agent action events|
+| Structured Memory | Reusable operational facts for retrieval and reasoning including user preferences, shpping journey state, trust/risk signals, operational coordination stage, long-term behavioural preferences, compact conversation memory|
+| Rolling Summary | Compressed workflow memory for efficient LLM context to capture tension and narrative|
 
 ---
 
@@ -334,9 +335,23 @@ full historical replay
 
 # Memory Compaction Strategy
 
+The system intentionally favors lightweight shopping continuity over deep long-term conversational memory.
+For marketplace workflows, most conversations are short-lived and task-oriented rather than persistent social interactions. Therefore, we only use hot memory and warm memory here 
+
+
 ## HOT MEMORY
 
-Recent active messages.
+Optimized for low-latency orchestration. 
+
+Contains:
+
+- recent active messages
+- current operational state
+- active listing context
+- active coordination markers
+
+
+Stored in Redis/in-memory cache
 
 Examples:
 
@@ -348,7 +363,13 @@ Examples:
 
 ## WARM MEMORY
 
-Session-level summaries and operational state.
+Session-level summaries and operational state, optimized for continuity across sessions that span days, weels, multiple revisits
+
+Contains:
+- structured memory
+- rolling summaries
+- stable user preferences
+- shopping journey progress
 
 Examples:
 
@@ -356,20 +377,13 @@ Examples:
 - current negotiation stage
 - unresolved risks
 
----
-
-## COLD MEMORY
-
-Long-term persistence:
-
-- embeddings
-- analytics
-- user profile
-- archived logs
+Stored in PostgreSQL or operational databases
 
 ---
 
 # Compression Techniques
+
+To prevent unbounded memory growth and token explosion, the system applies several compression strategies:
 
 ## Sliding Window
 
@@ -425,9 +439,9 @@ importance *= exp(-lambda * age)
 |---|---|
 | Redis | active session state |
 | PostgreSQL | conversations, profiles, listings |
-| Kafka | event streaming |
-| S3 | raw logs + tool traces |
-| Vector DB | embeddings + semantic retrieval |
+| Kafka | event streaming for asynchronous processing |
+| S3 | raw logs + tool traces for cheap large_scale archival |
+| Vector DB(optional) | embeddings + semantic retrieval |
 
 ---
 
@@ -1144,7 +1158,7 @@ unless human review occurs.
 
 ## Purpose
 
-Coordinate physical inspection/test ride.
+Coordinate physical inspection/test ride, the system should optimize for qualified appointments instead of maximum appointments by requiring all trigger conditions to be sufficiently true
 
 ---
 
@@ -1152,10 +1166,13 @@ Coordinate physical inspection/test ride.
 
 Call when:
 
-- active communication channel exists
-- buyer intent strong
+- buyer intent strong/ buyer explicitly expresses viewing/test-ride intent
+- seller responds cooperatively
+- a listing has been selected
+- active communication channel already exists
 - time/place agreed
 - no unresolved high-severity risk
+
 
 ---
 
@@ -1491,7 +1508,7 @@ because:
 | Mutual interest detected | Create buyer ↔ seller bridge |
 | Buyer requests viewing | Book appointment |
 | Severe risk detected | Escalate |
-
+| Current state | Propose a reasonable next best action |
 ---
 
 # Evaluation & Feedback Loop
