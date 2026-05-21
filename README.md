@@ -1401,7 +1401,7 @@ Useful for:
 - flexible interpretation
 - semantic understanding
 
-Recommended approach:
+Approach:
 
 ```text
 rules first
@@ -1496,7 +1496,7 @@ because:
 
 # Evaluation & Feedback Loop
 
-## Primary Success Metric
+## Primary Success Metric                                                                                                                                                                           
 
 Increase successful marketplace transactions.
 
