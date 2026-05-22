@@ -1635,12 +1635,14 @@ The AI agent is designed as a transaction orchestration system rather than merel
 Success is defined as helping buyers and sellers reach safe, high-quality transactions
 with lower friction and higher confidence through:
 
-- discover suitable bikes
-- make better decisions
+- high suitable bikes 
+- make better decisions 
 - reduce uncertainty
 - coordinate efficiently
 - negotiate safely
 - progress toward completed transactions
+
+Those could be clearly defined by the deal/conversion rate(how many matches really turn into purchases) and user retention rate(how many users actually buy or sell a second time on the platform)
 
 ---
 
@@ -1664,26 +1666,32 @@ will improve:
 
 ## Task Metrics
 
-- match success rate: 
-- appointment booking rate
-- escalation accuracy
-- next-action correctness
+- match success rate: The percentage of total automated match recommendations or search results that result in a successful pairing
+
+- appointment booking rate: The percentage of users who successfully schedule a meeting or viewing after initiating interest in a listing or service
+
+- escalation accuracy: The percentage of user queries or system-flagged listings routed to a human customer service agent or fraud team that truly required advanced manual intervention
+
+- next-action correctness: The frequency with which the system guides the user to the logically optimal next step in their specific buying/selling journey
 
 ---
 
 ## Quality Metrics
 
-- slot coverage
-- hallucination rate
-- policy violation rate
+- slot coverage: The percentage of essential data fields (e.g., mileage, model year, engine displacement, title status, modification history) that the system successfully extracts from a seller’s listing description or a buyer's prompt
+
+Incomplete data kills marketplaces. If slot coverage is low, buyers cannot filter effectively
+
+- hallucination rate: The frequency with which the AI assistant generates incorrect, unverified, or fabricated specifications about a vehicle (e.g., claiming a bike has ABS brakes when that model year did not offer it)
+
+- policy violation rate: The percentage of listings, user messages, or AI responses that breach platform guidelines (e.g., scam listings, off-platform payment requests, toxic language, or selling stolen parts)
 
 ---
 
 ## Business Metrics
 
-- seller response retention
-- time to qualified match
-- drop-off after contact
+- seller response retention: The percentage of sellers who consistently respond to buyer inquiries within an acceptable timeframe (e.g., under 3 hours) and remain active throughout the listing lifecycle
+
 
 ---
 # Error Analysis
