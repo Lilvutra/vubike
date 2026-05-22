@@ -237,7 +237,7 @@ The system separates memory into multiple layers.
 |---|---|
 | Raw Logs | Source of truth stored for replayability, debugging, auditing, retraining including event logging, state update events, tool call events, tool result events, agent action events|
 | Structured Memory | Reusable operational facts for retrieval and reasoning including user preferences, shpping journey state, trust/risk signals, operational coordination stage, long-term behavioural preferences, compact conversation memory|
-| Rolling Summary | Compressed workflow memory for efficient LLM context to capture tension and narrative|
+| Rolling Summary | Over time compressed workflow memory for efficient LLM context to capture tension and narrative|
 
 ---
 
