@@ -432,18 +432,6 @@ importance *= exp(-lambda * age)
 
 ---
 
-# Infrastructure Architecture
-
-| Component | Purpose |
-|---|---|
-| Redis | active session state |
-| PostgreSQL | conversations, profiles, listings |
-| Kafka | event streaming for asynchronous processing |
-| S3 | raw logs + tool traces for cheap large_scale archival |
-| Vector DB(optional) | embeddings + semantic retrieval |
-
----
-
 # State Schema
 
 ## State Design Philosophy
@@ -480,6 +468,8 @@ This keeps the system compact while preserving workflow continuity.
 ---
 
 # Operational State Schema
+
+
 
 ```json
 {
