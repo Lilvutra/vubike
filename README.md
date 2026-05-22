@@ -285,17 +285,16 @@ Useful reusable facts:
 
 ## What Should Stay Only In Logs?
 
+
 Low-value long-term data:
 
 - small talk
 - repeated confirmations
 - verbose negotiation back-and-forth
 - temporary conversational noise
-
-User message metadata
-Tool invocation
-Tool success/failure
-State changes(historical records)
+- User message metadata
+- Full tool payload
+- Historical records of state changes
 
 
 
