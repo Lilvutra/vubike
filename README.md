@@ -226,7 +226,7 @@ Offline Evaluation
 Feedback Loop
 (All stages emit Event Logs)
 ```
-![High level architecture](agent_vubike.drawio.png)
+![High level architecture](agent_vubike.drawio.svg)
 ---
 
 # Core Design Philosophy
@@ -1375,7 +1375,7 @@ Normalize into internal standard format:
 
 ## Raw Logs 
 
-Raw logs store the exact the conversational text that act as the immutable source of truth
+Raw logs store the exact conversational text that act as the immutable source of truth
 
 
 ```json
@@ -2030,7 +2030,7 @@ Possible improvements:
 - stronger regex extraction,
 - improved prompts,
 - new normalization rules,
-- ontology/schema updates.
+- schema updates.
 
 ---
 
