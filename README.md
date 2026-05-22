@@ -226,7 +226,7 @@ Offline Evaluation
 Feedback Loop
 (All stages emit Event Logs)
 ```
-![High level architecture](Agent_vubike.drawio (1).png)
+![High level architecture](Agent_vubike_.drawio.png)
 ---
 
 # Core Design Philosophy
